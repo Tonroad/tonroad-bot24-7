@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TonRoadBot", "TonRoadBot\TonRoadBot.csproj", "{B22A35B6-EDCE-440F-ADE3-E205F9CF336E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B22A35B6-EDCE-440F-ADE3-E205F9CF336E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B22A35B6-EDCE-440F-ADE3-E205F9CF336E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B22A35B6-EDCE-440F-ADE3-E205F9CF336E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B22A35B6-EDCE-440F-ADE3-E205F9CF336E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A4A2D82A-B732-454A-B348-A06B4FC46A61}
+	EndGlobalSection
+EndGlobal
