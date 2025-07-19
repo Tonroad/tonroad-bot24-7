@@ -5,11 +5,9 @@ using Telegram.Bot.Types.ReplyMarkups;
 using System.Collections.Concurrent;
 
 var botClient = new TelegramBotClient("7740992334:AAHS2q_ogUV7YW1jPg3b5z9FjLtf6fOojwU");
-
 using var cts = new CancellationTokenSource();
 
-// Хранилище обработанных сообщений (MessageId -> true)
-var processedMessages = new ConcurrentDictionary<int, bool>();
+var lastStartTimes = new ConcurrentDictionary<long, DateTime>(); // userId → last time
 
 botClient.StartReceiving(
     HandleUpdateAsync,
@@ -18,7 +16,7 @@ botClient.StartReceiving(
     cancellationToken: cts.Token
 );
 
-Console.WriteLine("✅ Bot started. Running until externally stopped.");
+Console.WriteLine("✅ Bot started. Waiting for /start...");
 
 await Task.Delay(-1, cts.Token);
 
@@ -28,17 +26,34 @@ async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, Cancellation
     {
         if (update.Message is { } message && message.Text != null)
         {
-            // Предотвращаем повторную обработку одного и того же сообщения
-            if (!processedMessages.TryAdd(message.MessageId, true))
-            {
-                Console.WriteLine($"⏩ Повторное сообщение (MessageId={message.MessageId}) — пропущено.");
-                return;
-            }
-
-            Console.WriteLine($"➡️ [{DateTime.Now:HH:mm:ss}] /start от пользователя {message.Chat.Id}");
-
             if (message.Text == "/start")
             {
+                var userId = message.From.Id;
+                var now = DateTime.UtcNow;
+
+                // 🔒 Блокируем повторный /start на 10 секунд
+                if (lastStartTimes.TryGetValue(userId, out var lastTime))
+                {
+                    var seconds = (now - lastTime).TotalSeconds;
+                    if (seconds < 10)
+                    {
+                        Console.WriteLine($"⏹ Повторный /start от {userId} через {seconds:F1} сек — игнорируется.");
+                        return;
+                    }
+                }
+
+                lastStartTimes[userId] = now;
+
+                // 🧾 Подробный лог
+                Console.WriteLine("------");
+                Console.WriteLine($"🟢 /start от ID: {message.From.Id}");
+                Console.WriteLine($"👤 Username: @{message.From.Username}");
+                Console.WriteLine($"📱 Имя: {message.From.FirstName} {message.From.LastName}");
+                Console.WriteLine($"📩 MessageId: {message.MessageId}");
+                Console.WriteLine($"🕒 Время: {message.Date.ToLocalTime()}");
+                Console.WriteLine("------");
+
+                // 🔘 WebApp-кнопка
                 var webAppInfo = new WebAppInfo
                 {
                     Url = "https://tonroad-map.vercel.app"
@@ -61,12 +76,12 @@ async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, Cancellation
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Ошибка в HandleUpdateAsync: {ex.Message}");
+        Console.WriteLine($"❌ Ошибка в обработке /start: {ex.Message}");
     }
 }
 
 Task HandleErrorAsync(ITelegramBotClient bot, Exception exception, CancellationToken cancellationToken)
 {
-    Console.WriteLine($"❌ Global Error: {exception.Message}");
+    Console.WriteLine($"❌ Global error: {exception.Message}");
     return Task.CompletedTask;
 }
