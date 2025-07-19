@@ -6,11 +6,14 @@ using Telegram.Bot.Types.ReplyMarkups;
 using System.Collections.Concurrent;
 
 var botClient = new TelegramBotClient("7740992334:AAHS2q_ogUV7YW1jPg3b5z9FjLtf6fOojwU");
-
 using var cts = new CancellationTokenSource();
 
-// Хранилище соответствия: кто прислал фото — какой file_id
+const long AdminId = 5959529178; // твой Telegram user id
+
+// Хранилище: кто прислал фото — file_id
 var userPhotoMap = new ConcurrentDictionary<long, string>();
+// Очередь ожидания: кому отправить следующее фото от админа
+var pendingSendbacks = new ConcurrentDictionary<long, long>();
 
 botClient.StartReceiving(
     HandleUpdateAsync,
@@ -26,28 +29,75 @@ await Task.Delay(-1, cts.Token);
 async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken cancellationToken)
 {
     if (update.Message is not { } message) return;
-
     long senderId = message.Chat.Id;
 
-    // Игрок прислал фото
+    // 1. Команда от админа: /sendback <id>
+    if (message.Text != null && message.Text.StartsWith("/sendback") && senderId == AdminId)
+    {
+        var parts = message.Text.Split(' ');
+        if (parts.Length == 2 && long.TryParse(parts[1], out long targetId))
+        {
+            // Включаем режим ожидания фото
+            pendingSendbacks[senderId] = targetId;
+
+            await bot.SendTextMessageAsync(
+                chatId: AdminId,
+                text: $"Теперь отправь фото, которое хочешь переслать игроку {targetId}.",
+                cancellationToken: cancellationToken
+            );
+        }
+        return;
+    }
+
+    // 2. Фото от админа (если ждём)
+    if (message.Photo != null && message.Photo.Length > 0 && senderId == AdminId)
+    {
+        if (pendingSendbacks.TryRemove(senderId, out long targetId))
+        {
+            var photo = message.Photo.Last();
+
+            await bot.SendPhotoAsync(
+                chatId: targetId,
+                photo: InputFile.FromFileId(photo.FileId),
+                caption: "✅ Вот твоё фото от администратора.",
+                cancellationToken: cancellationToken
+            );
+
+            await bot.SendTextMessageAsync(
+                chatId: AdminId,
+                text: $"Фото отправлено игроку {targetId}.",
+                cancellationToken: cancellationToken
+            );
+            return;
+        }
+
+        // Если нет команды — игнорируем фото админа
+        return;
+    }
+
+    // 3. Фото от обычного пользователя
     if (message.Photo != null && message.Photo.Length > 0)
     {
+        // Не реагируем на фото от админа (чтобы не пересылать свои же)
+        if (senderId == AdminId)
+            return;
+
         var photo = message.Photo.Last(); // самое большое фото
         string fileId = photo.FileId;
 
         // Сохраняем соответствие: игрок → фото
         userPhotoMap[senderId] = fileId;
 
-        // Пересылаем фото тебе (5959529178)
+        // Пересылаем фото админу
         await bot.SendTextMessageAsync(
-            chatId: 5959529178,
+            chatId: AdminId,
             text: $"📸 Игрок `{senderId}` прислал фото.",
             parseMode: ParseMode.Markdown,
             cancellationToken: cancellationToken
         );
 
         await bot.SendPhotoAsync(
-            chatId: 5959529178,
+            chatId: AdminId,
             photo: InputFile.FromFileId(fileId),
             caption: $"Для ответа используй команду:\n`/sendback {senderId}`",
             parseMode: ParseMode.Markdown,
@@ -57,39 +107,7 @@ async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, Cancellation
         return;
     }
 
-    // Команда от тебя: /sendback <id>
-    if (message.Text != null && message.Text.StartsWith("/sendback"))
-    {
-        var parts = message.Text.Split(' ');
-        if (parts.Length == 2 && long.TryParse(parts[1], out long targetId))
-        {
-            if (userPhotoMap.TryGetValue(targetId, out string fileId))
-            {
-                await bot.SendPhotoAsync(
-                    chatId: targetId,
-                    photo: InputFile.FromFileId(fileId),
-                    caption: "✅ Вот твоё обработанное фото!",
-                    cancellationToken: cancellationToken
-                );
-
-                await bot.SendTextMessageAsync(
-                    chatId: 5959529178,
-                    text: "Фото отправлено обратно игроку.",
-                    cancellationToken: cancellationToken
-                );
-            }
-            else
-            {
-                await bot.SendTextMessageAsync(
-                    chatId: 5959529178,
-                    text: "❌ Фото для этого пользователя не найдено.",
-                    cancellationToken: cancellationToken
-                );
-            }
-        }
-    }
-
-    // /start — показать кнопку карты
+    // 4. /start — показать кнопку карты
     if (message.Text == "/start")
     {
         var webAppInfo = new WebAppInfo
