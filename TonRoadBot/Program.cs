@@ -56,12 +56,12 @@ async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, Cancellation
         {
             var photo = message.Photo.Last();
 
-            await bot.SendPhotoAsync(
-                chatId: targetId,
-                photo: InputFile.FromFileId(photo.FileId),
-                caption: "✅ Вот твоё фото от администратора.",
-                cancellationToken: cancellationToken
-            );
+            await bot.SendDocumentAsync(
+    chatId: targetId,
+    document: InputFile.FromFileId(photo.FileId),
+    caption: "✅ Вот твоё фото от администратора (с прозрачным фоном).",
+    cancellationToken: cancellationToken
+);
 
             await bot.SendTextMessageAsync(
                 chatId: AdminId,
