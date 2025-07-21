@@ -123,7 +123,7 @@ async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, Cancellation
         await bot.SendPhotoAsync(
             chatId: message.Chat.Id,
             photo: InputFile.FromUri("https://raw.githubusercontent.com/tonroad/tonroad-map/main/tonroad_logo.jpg"),
-            caption: "Добро пожаловать в TonRoad!\nНажмите кнопку ниже, чтобы открыть карту.",
+            caption: "Добро пожаловать в TonRoad!\nЕсли у вас Аффон потяите экран к верху и нажмите кнопку ниже, в добрый путь.",
             replyMarkup: keyboard,
             cancellationToken: cancellationToken
         );
